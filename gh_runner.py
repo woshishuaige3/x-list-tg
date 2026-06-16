@@ -137,6 +137,8 @@ def handle_check_commands(cfg, state, seen):
             send_text(cfg, chat_id,
                       "我会在每天 7:30 / 12:00 / 14:00 / 23:00 自动推送 X 列表简报。\n\n"
                       "发送 /check 可随时查看最新动态（最多等几分钟响应）。")
+    # 关键：先存 offset（认领这批消息），再去慢慢总结。
+    # 这样即使下一次轮询提前启动，它的 getUpdates 也读不到这批 /check，避免重复响应。
     save_offset(offset)
 
     if wants_check:
@@ -145,12 +147,13 @@ def handle_check_commands(cfg, state, seen):
         if not new_items:
             send_text(cfg, cfg["telegram_chat_id"], "暂时没有新推文 ✅")
             return
-        message = build_briefing(cfg, new_items, manual=True)
-        send_telegram(cfg, message)
+        # 先把这批标记为已读并落盘，再总结发送，进一步降低并发重复
         for it in new_items:
             seen.add(it["id"])
         state["seen_ids"] = list(seen)
         save_state(STATE_PATH, state)
+        message = build_briefing(cfg, new_items, manual=True)
+        send_telegram(cfg, message)
 
 
 def maybe_scheduled_push(cfg, state, seen, poll_minutes):

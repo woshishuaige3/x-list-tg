@@ -1,13 +1,6 @@
 #!/usr/bin/env python3
 """
 gh_runner.py —— 在 GitHub Actions 上运行的统一入口（轮询模式）。
-
-每次被 Actions 唤醒（每 N 分钟一次）时，做两件事：
-  1) 检查 Telegram 有没有新的 /check 指令，有就立即拉新推 -> 总结 -> 回复。
-  2) 判断当前是否落在某个定时推送窗口（7:30 / 12:00 / 14:00 / 23:00 附近），是则推送当时段新推。
-
-配置全部来自环境变量（GitHub Secrets），不读 config.json。
-状态文件 state.json / tg_offset.json 由 workflow 提交回仓库来持久化。
 """
 
 import json
@@ -30,10 +23,8 @@ import urllib.error
 STATE_PATH = os.path.join(HERE, "state.json")
 OFFSET_PATH = os.path.join(HERE, "tg_offset.json")
 
-# 北京时间
 TZ = timezone(timedelta(hours=8))
 
-# 定时推送窗口（北京时间，时:分）。轮询间隔内只要落在窗口里就触发一次。
 PUSH_TIMES = [(7, 30), (12, 0), (14, 0), (23, 0)]
 
 
@@ -48,7 +39,7 @@ def cfg_from_env():
         "telegram_bot_token": os.environ["TELEGRAM_BOT_TOKEN"],
         "telegram_chat_id": os.environ["TELEGRAM_CHAT_ID"],
         "max_tweets_per_run": int(os.environ.get("MAX_TWEETS_PER_RUN", "80")),
-        "http_proxy": "",  # GitHub 海外，直连，不用代理
+        "http_proxy": "",
     }
 
 
@@ -112,7 +103,6 @@ def fetch_new_items(cfg, seen):
 
 
 def handle_check_commands(cfg, state, seen):
-    """处理自上次以来的 /check 指令。返回是否消耗了新推（消耗了就更新 seen）。"""
     offset = load_offset()
     try:
         resp = tg_api(cfg, "getUpdates", {"offset": offset + 1, "timeout": 0,
@@ -137,9 +127,13 @@ def handle_check_commands(cfg, state, seen):
             send_text(cfg, chat_id,
                       "我会在每天 7:30 / 12:00 / 14:00 / 23:00 自动推送 X 列表简报。\n\n"
                       "发送 /check 可随时查看最新动态（最多等几分钟响应）。")
-    # 关键：先存 offset（认领这批消息），再去慢慢总结。
-    # 这样即使下一次轮询提前启动，它的 getUpdates 也读不到这批 /check，避免重复响应。
     save_offset(offset)
+    if resp.get("result"):
+        try:
+            tg_api(cfg, "getUpdates", {"offset": offset + 1, "timeout": 0,
+                                       "allowed_updates": ["message"]})
+        except Exception as e:
+            log(f"确认 offset 失败（不致命）：{e}")
 
     if wants_check:
         send_text(cfg, cfg["telegram_chat_id"], "🔍 正在查看最新动态，请稍候…")
@@ -147,7 +141,6 @@ def handle_check_commands(cfg, state, seen):
         if not new_items:
             send_text(cfg, cfg["telegram_chat_id"], "暂时没有新推文 ✅")
             return
-        # 先把这批标记为已读并落盘，再总结发送，进一步降低并发重复
         for it in new_items:
             seen.add(it["id"])
         state["seen_ids"] = list(seen)
@@ -157,20 +150,17 @@ def handle_check_commands(cfg, state, seen):
 
 
 def maybe_scheduled_push(cfg, state, seen, poll_minutes):
-    """如果当前时间落在某个推送窗口内（窗口宽度=轮询间隔），就推送。"""
     now = datetime.now(TZ)
     in_window = False
     for h, m in PUSH_TIMES:
         target = now.replace(hour=h, minute=m, second=0, microsecond=0)
         diff = (now - target).total_seconds() / 60.0
-        # 当前时间在窗口 [target, target+poll_minutes) 内
         if 0 <= diff < poll_minutes:
             in_window = True
             break
     if not in_window:
         return
 
-    # 防重复：记录今天已推过的窗口
     today_key = now.strftime("%Y-%m-%d")
     win_key = f"{today_key} {h:02d}:{m:02d}"
     pushed = set(state.get("pushed_windows", []))
@@ -188,7 +178,6 @@ def maybe_scheduled_push(cfg, state, seen, poll_minutes):
         state["seen_ids"] = list(seen)
 
     pushed.add(win_key)
-    # 只保留最近 30 条窗口记录
     state["pushed_windows"] = list(pushed)[-30:]
     save_state(STATE_PATH, state)
 
@@ -199,9 +188,7 @@ def main():
     state = load_state(STATE_PATH)
     seen = set(state["seen_ids"])
 
-    # 1) 先处理手动 /check
     handle_check_commands(cfg, state, seen)
-    # 2) 再判断定时推送
     maybe_scheduled_push(cfg, state, seen, poll_minutes)
 
 

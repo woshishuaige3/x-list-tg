@@ -169,7 +169,9 @@ def maybe_scheduled_push(cfg, state, seen, poll_minutes):
 
     new_items = fetch_new_items(cfg, seen)
     if not new_items:
-        log(f"[{win_key}] 没有新推文，跳过。")
+        now_str = now.strftime("%m-%d %H:%M")
+        send_text(cfg, cfg["telegram_chat_id"], f"📭 {now_str} 定点播报：暂无新内容")
+        log(f"[{win_key}] 没有新推文，已发空提示。")
     else:
         message = build_briefing(cfg, new_items, manual=False)
         send_telegram(cfg, message)

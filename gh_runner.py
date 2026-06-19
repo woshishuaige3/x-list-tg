@@ -27,6 +27,9 @@ TZ = timezone(timedelta(hours=8))
 
 PUSH_TIMES = [(7, 30), (12, 0), (14, 0), (23, 0)]
 
+PUSH_WINDOW_MIN = 1
+CATCHUP_MINUTES = 10
+
 
 def cfg_from_env():
     return {
@@ -111,8 +114,12 @@ def handle_check_commands(cfg, state, seen):
         log(f"getUpdates 失败：{e}")
         return
 
+    updates = resp.get("result", [])
+    if not updates:
+        return
+
     wants_check = False
-    for upd in resp.get("result", []):
+    for upd in updates:
         offset = max(offset, upd["update_id"])
         msg = upd.get("message") or {}
         chat = msg.get("chat") or {}
@@ -127,13 +134,13 @@ def handle_check_commands(cfg, state, seen):
             send_text(cfg, chat_id,
                       "我会在每天 7:30 / 12:00 / 14:00 / 23:00 自动推送 X 列表简报。\n\n"
                       "发送 /check 可随时查看最新动态（最多等几分钟响应）。")
+
+    try:
+        tg_api(cfg, "getUpdates", {"offset": offset + 1, "timeout": 0,
+                                   "allowed_updates": ["message"]})
+    except Exception as e:
+        log(f"确认 offset 失败（不致命）：{e}")
     save_offset(offset)
-    if resp.get("result"):
-        try:
-            tg_api(cfg, "getUpdates", {"offset": offset + 1, "timeout": 0,
-                                       "allowed_updates": ["message"]})
-        except Exception as e:
-            log(f"确认 offset 失败（不致命）：{e}")
 
     if wants_check:
         send_text(cfg, cfg["telegram_chat_id"], "🔍 正在查看最新动态，请稍候…")
@@ -151,21 +158,34 @@ def handle_check_commands(cfg, state, seen):
 
 def maybe_scheduled_push(cfg, state, seen, poll_minutes):
     now = datetime.now(TZ)
-    in_window = False
+    today_key = now.strftime("%Y-%m-%d")
+
+    claimed = set(state.get("pushed_windows", []))
+    done = set(state.get("done_windows", []))
+
+    win_key = None
+    is_catchup = False
     for h, m in PUSH_TIMES:
         target = now.replace(hour=h, minute=m, second=0, microsecond=0)
         diff = (now - target).total_seconds() / 60.0
-        if 0 <= diff < poll_minutes:
-            in_window = True
+        key = f"{today_key} {h:02d}:{m:02d}"
+        if 0 <= diff < PUSH_WINDOW_MIN:
+            win_key = key
+            is_catchup = False
             break
-    if not in_window:
+        if PUSH_WINDOW_MIN <= diff < CATCHUP_MINUTES and key in claimed and key not in done:
+            win_key = key
+            is_catchup = True
+            break
+    if win_key is None:
         return
 
-    today_key = now.strftime("%Y-%m-%d")
-    win_key = f"{today_key} {h:02d}:{m:02d}"
-    pushed = set(state.get("pushed_windows", []))
-    if win_key in pushed:
-        return
+    if not is_catchup:
+        if win_key in claimed:
+            return
+        claimed.add(win_key)
+        state["pushed_windows"] = list(claimed)[-30:]
+        save_state(STATE_PATH, state)
 
     new_items = fetch_new_items(cfg, seen)
     if not new_items:
@@ -179,8 +199,8 @@ def maybe_scheduled_push(cfg, state, seen, poll_minutes):
             seen.add(it["id"])
         state["seen_ids"] = list(seen)
 
-    pushed.add(win_key)
-    state["pushed_windows"] = list(pushed)[-30:]
+    done.add(win_key)
+    state["done_windows"] = list(done)[-30:]
     save_state(STATE_PATH, state)
 
 

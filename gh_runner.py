@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 gh_runner.py —— 在 GitHub Actions 上运行的统一入口（轮询模式）。
+防重复：定点窗口收窄到 1 分钟 + 先记账后干活 + 超时补漏；不再靠杀任务。
 """
 
 import json
@@ -77,22 +78,9 @@ def send_text(cfg, chat_id, text):
 
 def build_briefing(cfg, new_items, manual=False):
     summary = enforce_blank_lines(linkify_sources(summarize_with_gemini(cfg, new_items), new_items))
-    pub_times = []
-    for it in new_items:
-        try:
-            dt = parsedate_to_datetime(it.get("published", ""))
-            if dt:
-                pub_times.append(dt)
-        except Exception:
-            pass
     now_dt = datetime.now(TZ)
-    if pub_times:
-        earliest = min(pub_times).astimezone(TZ)
-        window = f"{earliest.strftime('%H:%M')} → {now_dt.strftime('%H:%M')}"
-    else:
-        window = now_dt.strftime("%H:%M")
     tag = "（手动查询）" if manual else ""
-    header = (f"⟪📰 X 列表要闻{tag} · {now_dt.strftime('%m-%d')} {window}⟫\n"
+    header = (f"⟪📰 X 列表要闻{tag} · {now_dt.strftime('%m-%d')} 截至 {now_dt.strftime('%H:%M')}⟫\n"
               f"（本次 {len(new_items)} 条新推）\n\n")
     return header + summary
 

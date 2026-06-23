@@ -34,7 +34,8 @@ CATCHUP_MINUTES = 10
 
 def cfg_from_env():
     return {
-        "rss_url": os.environ["RSS_URL"],
+        "x_auth_token": os.environ["X_AUTH_TOKEN"],
+        "x_proxy": os.environ.get("X_PROXY", ""),
         "gemini_api_key": os.environ["GEMINI_API_KEY"],
         "gemini_base_url": os.environ.get("GEMINI_BASE_URL",
                                           "https://generativelanguage.googleapis.com/v1beta/openai/"),
@@ -86,8 +87,9 @@ def build_briefing(cfg, new_items, manual=False):
 
 
 def fetch_new_items(cfg, seen):
-    xml_text = http_get(cfg["rss_url"], proxy=None)
-    items = parse_rss(xml_text)
+    from x_fetch import fetch_x_items
+    items = fetch_x_items(
+        auth_token=cfg["x_auth_token"], proxy=cfg.get("x_proxy") or None)
     new_items = [it for it in items if it["id"] and it["id"] not in seen]
     max_n = cfg["max_tweets_per_run"]
     return new_items[:max_n]

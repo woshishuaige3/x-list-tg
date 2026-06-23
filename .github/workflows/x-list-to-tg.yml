@@ -24,9 +24,12 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install dependencies
+        run: pip install -U Scweet
+
       - name: Run
         env:
-          RSS_URL: ${{ secrets.RSS_URL }}
+          X_AUTH_TOKEN: ${{ secrets.X_AUTH_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

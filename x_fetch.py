@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""逐个抓 X 博主推文：每抓 BATCH 个停顿一次防限流；只留最近 N 天、按时间排序。"""
-import time
+"""逐个抓 X 博主推文：每跑一次翻面抓另一半博主（连跑两次覆盖全部），避开单 Cookie 限流上限；只留最近 N 天、按时间排序。"""
+import os
 from datetime import datetime, timezone, timedelta
 from Scweet import Scweet
 
@@ -14,9 +14,33 @@ ACCOUNTS = [
 ]
 
 RECENT_DAYS = 1            # 只看最近 24 小时
-PER_USER_LIMIT = 10        # 每个博主最多抓几条
-BATCH = 6                  # 每抓几个博主停顿一次
-BATCH_SLEEP = 20           # 每批之间停顿秒数（防限流）
+PER_USER_LIMIT = 10
+GROUPS = 2                 # 分成几组轮换（2 组 → 每次约 11 个，稳在限流线下；连跑 2 次覆盖全部）
+ROTATE_FILE = "rotate.txt"  # 记录上次抓到第几组，每跑一次翻面
+
+
+def _next_slot():
+    """读上次的组号、翻到下一组、写回。与时间无关——连跑两次就能覆盖全部博主。"""
+    last = -1
+    try:
+        with open(ROTATE_FILE) as f:
+            last = int(f.read().strip())
+    except (FileNotFoundError, ValueError):
+        pass
+    slot = (last + 1) % GROUPS
+    try:
+        with open(ROTATE_FILE, "w") as f:
+            f.write(str(slot))
+    except OSError as e:
+        print(f"[warn] 写 {ROTATE_FILE} 失败：{e}", flush=True)
+    return slot
+
+
+def _pick_accounts():
+    slot = _next_slot()
+    picked = [a for i, a in enumerate(ACCOUNTS) if i % GROUPS == slot]
+    print(f"[info] 本次轮到第 {slot+1}/{GROUPS} 组，共 {len(picked)} 个博主（连跑两次覆盖全部）", flush=True)
+    return picked
 
 
 def _parse_ts(ts):
@@ -39,11 +63,7 @@ def fetch_x_items(auth_token, proxy=None, per_user_limit=None):
     cutoff = datetime.now(timezone.utc) - timedelta(days=RECENT_DAYS)
     items = []
 
-    for i, acct in enumerate(ACCOUNTS):
-        # 每抓 BATCH 个博主，停顿一下，避免被 X 限流
-        if i > 0 and i % BATCH == 0:
-            print(f"[info] 已抓 {i} 个，停顿 {BATCH_SLEEP}s 防限流…", flush=True)
-            time.sleep(BATCH_SLEEP)
+    for acct in _pick_accounts():
         try:
             raw = s.get_profile_tweets([acct], limit=per_user_limit)
         except Exception as e:
@@ -63,13 +83,9 @@ def fetch_x_items(auth_token, proxy=None, per_user_limit=None):
             text = (t.get("text") or "").strip()
             link = f"https://x.com/{screen}/status/{tid}" if screen else ""
             items.append({
-                "id": tid,
-                "title": text[:50],
-                "link": link,
-                "author": screen,
-                "content": text,
-                "published": ts,
-                "_sort_dt": dt,
+                "id": tid, "title": text[:50], "link": link,
+                "author": screen, "content": text,
+                "published": ts, "_sort_dt": dt,
             })
             got += 1
         print(f"[info] {acct}: 最近{RECENT_DAYS}天 {got} 条", flush=True)

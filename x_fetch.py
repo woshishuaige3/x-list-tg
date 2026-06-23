@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""用 Scweet 抓取 X 博主推文，按发布时间从新到旧排序，输出格式与原 parse_rss 一致。"""
-from datetime import datetime, timezone
+"""用 Scweet 抓取 X 博主推文：只保留最近 N 天、按时间从新到旧排序。"""
+from datetime import datetime, timezone, timedelta
 from Scweet import Scweet
 
 ACCOUNTS = [
@@ -12,15 +12,17 @@ ACCOUNTS = [
     "trendforce", "labubu_trader",
 ]
 
+# 只保留最近几天的推文（你可以改这个数字：2 或 3）
+RECENT_DAYS = 3
+
 
 def _parse_ts(ts):
-    """把 Twitter 时间戳解析成可比较的 datetime；失败则返回最旧时间。"""
     for fmt in ("%a %b %d %H:%M:%S %z %Y", "%a %b %d %H:%M:%S +0000 %Y"):
         try:
             return datetime.strptime(ts, fmt)
         except (ValueError, TypeError):
             continue
-    return datetime(1970, 1, 1, tzinfo=timezone.utc)
+    return None
 
 
 def fetch_x_items(auth_token, proxy=None, per_user_limit=10):
@@ -30,16 +32,22 @@ def fetch_x_items(auth_token, proxy=None, per_user_limit=10):
     s = Scweet(**kwargs)
     raw = s.get_profile_tweets(ACCOUNTS, limit=per_user_limit * len(ACCOUNTS))
 
+    cutoff = datetime.now(timezone.utc) - timedelta(days=RECENT_DAYS)
+
     items = []
     for t in raw:
         tid = str(t.get("tweet_id", "")).strip()
         if not tid:
             continue
+        ts = t.get("timestamp", "")
+        dt = _parse_ts(ts)
+        # 解析不出时间、或早于 N 天前的，直接跳过
+        if dt is None or dt < cutoff:
+            continue
         user = t.get("user") or {}
         screen = user.get("screen_name", "")
         text = (t.get("text") or "").strip()
         link = f"https://x.com/{screen}/status/{tid}" if screen else ""
-        ts = t.get("timestamp", "")
         items.append({
             "id": tid,
             "title": text[:50],
@@ -47,10 +55,9 @@ def fetch_x_items(auth_token, proxy=None, per_user_limit=10):
             "author": screen,
             "content": text,
             "published": ts,
-            "_sort_dt": _parse_ts(ts),
+            "_sort_dt": dt,
         })
 
-    # 按发布时间从新到旧排序
     items.sort(key=lambda it: it["_sort_dt"], reverse=True)
     for it in items:
         it.pop("_sort_dt", None)

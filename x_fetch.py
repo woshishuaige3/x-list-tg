@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""用 Scweet 逐个抓取 X 博主推文：每个博主单独抓，互不影响；只留最近 N 天、按时间排序。"""
+"""逐个抓 X 博主推文：每抓 BATCH 个停顿一次防限流；只留最近 N 天、按时间排序。"""
+import time
 from datetime import datetime, timezone, timedelta
 from Scweet import Scweet
 
@@ -12,8 +13,10 @@ ACCOUNTS = [
     "trendforce", "labubu_trader",
 ]
 
-RECENT_DAYS = 1            # 只保留最近几天
+RECENT_DAYS = 1            # 只看最近 24 小时
 PER_USER_LIMIT = 10        # 每个博主最多抓几条
+BATCH = 8                  # 每抓几个博主停顿一次
+BATCH_SLEEP = 5            # 每批之间停顿秒数（防限流）
 
 
 def _parse_ts(ts):
@@ -36,13 +39,16 @@ def fetch_x_items(auth_token, proxy=None, per_user_limit=None):
     cutoff = datetime.now(timezone.utc) - timedelta(days=RECENT_DAYS)
     items = []
 
-    # 逐个博主抓，单个失败不影响其他
-    for acct in ACCOUNTS:
+    for i, acct in enumerate(ACCOUNTS):
+        # 每抓 BATCH 个博主，停顿一下，避免被 X 限流
+        if i > 0 and i % BATCH == 0:
+            print(f"[info] 已抓 {i} 个，停顿 {BATCH_SLEEP}s 防限流…", flush=True)
+            time.sleep(BATCH_SLEEP)
         try:
             raw = s.get_profile_tweets([acct], limit=per_user_limit)
         except Exception as e:
             print(f"[warn] 抓 {acct} 失败：{e}", flush=True)
-            continue
+            raw = []
         got = 0
         for t in raw:
             tid = str(t.get("tweet_id", "")).strip()

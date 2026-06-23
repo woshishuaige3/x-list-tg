@@ -15,8 +15,8 @@ ACCOUNTS = [
 
 RECENT_DAYS = 1            # 只看最近 24 小时
 PER_USER_LIMIT = 10        # 每个博主最多抓几条
-BATCH = 8                  # 每抓几个博主停顿一次
-BATCH_SLEEP = 5            # 每批之间停顿秒数（防限流）
+BATCH = 6                  # 每抓几个博主停顿一次
+BATCH_SLEEP = 20           # 每批之间停顿秒数（防限流）
 
 
 def _parse_ts(ts):

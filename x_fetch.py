@@ -12,7 +12,7 @@ ACCOUNTS = [
     "trendforce", "labubu_trader",
 ]
 
-RECENT_DAYS = 3            # 只保留最近几天
+RECENT_DAYS = 1            # 只保留最近几天
 PER_USER_LIMIT = 10        # 每个博主最多抓几条
 
 

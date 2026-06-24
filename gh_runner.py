@@ -26,7 +26,7 @@ OFFSET_PATH = os.path.join(HERE, "tg_offset.json")
 
 TZ = timezone(timedelta(hours=8))
 
-PUSH_TIMES = [(7, 30), (12, 0), (14, 0), (23, 0)]
+PUSH_TIMES = [(7, 30), (12, 0), (14, 0), (21, 10), (23, 0)]
 
 PUSH_WINDOW_MIN = 1
 CATCHUP_MINUTES = 10

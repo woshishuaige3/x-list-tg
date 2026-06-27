@@ -10,6 +10,7 @@ ACCOUNTS = [
     "STANLEES4", "LinQingV", "fxtrader", "nft_hu",
     "MacroMargin", "ShanghaoJin", "BigbirdflyChan", "mingchikuo",
     "trendforce", "labubu_trader",
+    "au_xbt", "SemiAnalysis_",
 ]
 
 RECENT_DAYS = 1            # 只看最近 24 小时

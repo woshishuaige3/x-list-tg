@@ -9,9 +9,10 @@ ACCOUNTS = [
     "ArtofSpecuycky", "qinbafrank", "iamai_omni", "Franktradinglog",
     "STANLEES4", "LinQingV", "fxtrader", "nft_hu",
     "MacroMargin", "ShanghaoJin", "BigbirdflyChan", "mingchikuo",
-       "trendforce", "labubu_trader",
+    "trendforce", "labubu_trader",
     "au_xbt", "SemiAnalysis_",
     "agudianjinshou",
+    "PhyrexNi", "memekiller365",
 ]
 
 RECENT_DAYS = 1            # 只看最近 24 小时

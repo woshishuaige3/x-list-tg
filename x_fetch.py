@@ -12,7 +12,7 @@ ACCOUNTS = [
     "trendforce", "labubu_trader",
     "au_xbt", "SemiAnalysis_",
     "agudianjinshou",
-    "PhyrexNi", "memekiller365",
+    "PhyrexNi", "pequityresearch",
 ]
 
 RECENT_DAYS = 1            # 只看最近 24 小时

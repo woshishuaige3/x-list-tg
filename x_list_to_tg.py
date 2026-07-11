@@ -321,11 +321,11 @@ def enforce_blank_lines(text):
     """安全网 + 板块分隔：
     1) 每条帖子（以『数字.』开头的行）和每个主题标题前都补空行；
     2) 板块标题（⟪ 开头、且不是 TLDR / 基本面变化 的行）自动加 ▎ 前缀让标题更重（方案 C），
-       并从第二个板块起在标题上方插一条 • • • • • 分隔线（方案 A），把板块之间明显分开。
+       并在每个板块起在标题上方插一条 • • • • • 分隔线（方案 A），把板块之间明显分开。
     即使模型偶尔忘了留空行也能保证排版清爽。"""
     lines = text.split("\n")
     out = []
-    section_count = 0  # 已出现的板块标题数（用于第一个板块不加分隔线）
+    section_count = 0  # 已出现的板块标题数
     for line in lines:
         stripped = line.lstrip()
         is_item = bool(re.match(r"^\d+\.\s", stripped))
@@ -338,8 +338,8 @@ def enforce_blank_lines(text):
             if stripped.startswith("⟪") and not stripped.startswith("⟪▎"):
                 line = "⟪▎" + stripped[1:]
                 stripped = line
-            # 从第二个板块起，在标题上方插分隔线（前面留一个空行）
-            if section_count >= 2:
+            # 每个板块标题上方都插分隔线（前面留一个空行）
+            if section_count >= 1:
                 if out and out[-1].strip() != "":
                     out.append("")
                 out.append(SECTION_DIVIDER)

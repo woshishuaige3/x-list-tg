@@ -187,7 +187,7 @@ def summarize_with_gemini(cfg, tweets, daily=False):
         "\n"
         "每个主题小标题下面，放属于该主题的若干条帖子。每条帖子严格用【三行】，格式如下：\n"
         "  第一行：序号. ⟪一句话精华标题⟫     （序号全局连续，从 1 开始，跨板块继续累加；精华标题加粗，是这条帖子的核心看点。"
-        "如果这条帖子涉及投资基本面的变化，就在精华标题最前面加一个 🔺，例如 ⟪🔺 xxx⟫）\n"
+        "如果这条帖子涉及投资基本面的变化，就在这一行的最末尾、加粗标题之后加一个 🔺（不加粗、靠右排），例如 ⟪xxx⟫ 🔺）\n"
         "  第二行：用一两句话把帖子内容简练讲清楚（发生了什么/博主的观点），有标的、数据、价格一定保留（如 $AMKR、油价跌5%）。\n"
         "  第三行：— @博主 «N»   （N 必须是这条帖子在下方原始列表里对应的方括号编号，例如原文是 [3]，这里就写 «3»。这个 «N» 非常重要，绝对不能省略或写错，我会用它生成原帖链接。）\n"
         "  ⚠️ 每条帖子之间必须空一行；主题与主题之间也空一行。\n"
@@ -205,7 +205,7 @@ def summarize_with_gemini(cfg, tweets, daily=False):
         "\n"
         "⟪💾 存储⟫\n"
         "\n"
-        "3. ⟪🔺 三星 4nm 为 Neuralink 造芯片⟫\n"
+        "3. ⟪三星 4nm 为 Neuralink 造芯片⟫ 🔺\n"
         "已试产，目标明年底量产。\n"
         "— @jukan05 «5»\n"
         "\n"
@@ -312,16 +312,36 @@ def to_telegram_html(text):
     return text
 
 
+SECTION_DIVIDER = "• • • • •"
+
+
 def enforce_blank_lines(text):
-    """安全网：确保每条帖子（以『数字.』开头的行）和每个主题标题前都有空行，
+    """安全网 + 板块分隔：
+    1) 每条帖子（以『数字.』开头的行）和每个主题标题前都补空行；
+    2) 板块标题（⟪ 开头、且不是 TLDR / 基本面变化 的行）自动加 ▎ 前缀让标题更重（方案 C），
+       并从第二个板块起在标题上方插一条 • • • • • 分隔线（方案 A），把板块之间明显分开。
     即使模型偶尔忘了留空行也能保证排版清爽。"""
     lines = text.split("\n")
     out = []
+    section_count = 0  # 已出现的板块标题数（用于第一个板块不加分隔线）
     for line in lines:
         stripped = line.lstrip()
         is_item = bool(re.match(r"^\d+\.\s", stripped))
         is_topic = stripped.startswith("⟪") and "TLDR" not in stripped
-        if (is_item or is_topic) and out and out[-1].strip() != "":
+        # 板块标题：主题标题里排除掉「基本面变化」那一行（它属于开头部分，不算板块）
+        is_section = is_topic and "基本面变化" not in stripped
+        if is_section:
+            section_count += 1
+            # 给板块标题加 ▎ 前缀（放在 ⟪ 之后），若已存在则不重复加
+            if stripped.startswith("⟪") and not stripped.startswith("⟪▎"):
+                line = "⟪▎" + stripped[1:]
+                stripped = line
+            # 从第二个板块起，在标题上方插分隔线（前面留一个空行）
+            if section_count >= 2:
+                if out and out[-1].strip() != "":
+                    out.append("")
+                out.append(SECTION_DIVIDER)
+        if (is_item or is_topic) and out and out[-1].strip() != "" and out[-1].strip() != SECTION_DIVIDER:
             out.append("")
         out.append(line)
     # 压掉连续多个空行为最多一个

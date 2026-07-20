@@ -4,7 +4,7 @@ from datetime import datetime, timezone, timedelta
 from Scweet import Scweet
 
 ACCOUNTS = [
-    "yiran2037840", "aleabitoreddit", "pcbanalysis", "jukan05",
+    "fupenglondon", "aleabitoreddit", "pcbanalysis", "jukan05",
     "shufen46250836", "alpha101xyz", "xiaomustock", "fi56622380",
     "ArtofSpecuycky", "qinbafrank", "iamai_omni", "Franktradinglog",
     "STANLEES4", "LinQingV", "fxtrader", "nft_hu",

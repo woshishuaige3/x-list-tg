@@ -13,6 +13,7 @@ ACCOUNTS = [
     "au_xbt", "SemiAnalysis_",
     "agudianjinshou",
     "PhyrexNi", "pequityresearch",
+    "TJ_Research",
 ]
 
 RECENT_DAYS = 1            # 只看最近 24 小时

@@ -7,7 +7,7 @@ ACCOUNTS = [
     "fupenglondon", "aleabitoreddit", "pcbanalysis", "jukan05",
     "shufen46250836", "alpha101xyz", "xiaomustock", "fi56622380",
     "ArtofSpecuycky", "qinbafrank", "iamai_omni", "Franktradinglog",
-    "henryhuchina", "LinQingV", "fxtrader", "nft_hu",
+    "syhytu8i", "LinQingV", "fxtrader", "nft_hu",
     "MacroMargin", "ShanghaoJin", "BigbirdflyChan", "mingchikuo",
     "trendforce", "labubu_trader",
     "au_xbt", "SemiAnalysis_",

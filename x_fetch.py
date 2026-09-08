@@ -45,6 +45,8 @@ def _fetch_with_token(auth_token, accounts, cutoff, per_user_limit, proxy, tag):
             raw = []
         got = 0
         for t in raw:
+    print(f"[debug] raw sample: {t}", flush=True)  # 临时：看清字段和时间格式
+    break
             tid = str(t.get("tweet_id", "")).strip()
             if not tid:
                 continue

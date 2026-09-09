@@ -4,6 +4,14 @@
 from datetime import datetime, timezone, timedelta
 
 from Scweet import Scweet
+import logging, sys
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s | %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+    force=True,
+)
 
 
 ACCOUNTS = [

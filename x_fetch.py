@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """双 Cookie 抓 X 博主推文：两个小号各抓一半，避开单 Cookie 限流上限；合并去重、只留最近 N 天、按时间排序。"""
+
 from datetime import datetime, timezone, timedelta
+
 from Scweet import Scweet
+
 
 ACCOUNTS = [
     "fupenglondon", "aleabitoreddit", "pcbanalysis", "jukan05",
@@ -15,6 +18,7 @@ ACCOUNTS = [
     "PhyrexNi", "pequityresearch",
     "TJ_Research",
 ]
+
 
 RECENT_DAYS = 1            # 只看最近 24 小时
 PER_USER_LIMIT = 10
@@ -57,11 +61,11 @@ def _fetch_with_token(auth_token, accounts, cutoff, per_user_limit, proxy, tag):
         except Exception as e:
             print(f"[warn][{tag}] 抓 {acct} 失败：{e}", flush=True)
             raw = []
-            got = 0
-    if raw:
-        print(f"[debug][{tag}] raw sample: {raw[0]}", flush=True)  # 临时：看清字段和时间格式
-    for t in raw:
-        tid = str(t.get("tweet_id", "")).strip()
+        got = 0
+        if raw:
+            print(f"[debug][{tag}] raw sample: {raw[0]}", flush=True)  # 临时：看清字段和时间格式
+        for t in raw:
+            tid = str(t.get("tweet_id", "")).strip()
             if not tid:
                 continue
             ts = t.get("timestamp", "")
@@ -104,7 +108,6 @@ def fetch_x_items(auth_token, auth_token_2=None, proxy=None, per_user_limit=None
             continue
         seen.add(it["id"])
         deduped.append(it)
-
     deduped.sort(key=lambda x: x["_sort_dt"], reverse=True)
     for it in deduped:
         it.pop("_sort_dt", None)

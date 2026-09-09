@@ -21,12 +21,26 @@ PER_USER_LIMIT = 10
 
 
 def _parse_ts(ts):
-    for fmt in ("%a %b %d %H:%M:%S %z %Y", "%a %b %d %H:%M:%S +0000 %Y"):
-        try:
-            return datetime.strptime(ts, fmt)
-        except (ValueError, TypeError):
-            continue
-    return None
+    if ts is None or ts == "":
+        return None
+    # Unix 时间戳（秒或毫秒）
+    if isinstance(ts, (int, float)) or (isinstance(ts, str) and ts.strip().isdigit()):
+        val = float(ts)
+        if val > 1e12:            # 毫秒
+            val /= 1000.0
+        return datetime.fromtimestamp(val, tz=timezone.utc)
+    s = str(ts).strip()
+    # 老 Twitter created_at 格式（含 +0000 时区）
+    try:
+        return datetime.strptime(s, "%a %b %d %H:%M:%S %z %Y")
+    except (ValueError, TypeError):
+        pass
+    # ISO 8601，如 2026-09-08T06:15:00.000Z
+    try:
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
 
 
 def _fetch_with_token(auth_token, accounts, cutoff, per_user_limit, proxy, tag):
@@ -43,11 +57,11 @@ def _fetch_with_token(auth_token, accounts, cutoff, per_user_limit, proxy, tag):
         except Exception as e:
             print(f"[warn][{tag}] 抓 {acct} 失败：{e}", flush=True)
             raw = []
-        got = 0
-        for t in raw:
-    print(f"[debug] raw sample: {t}", flush=True)  # 临时：看清字段和时间格式
-    break
-            tid = str(t.get("tweet_id", "")).strip()
+            got = 0
+    if raw:
+        print(f"[debug][{tag}] raw sample: {raw[0]}", flush=True)  # 临时：看清字段和时间格式
+    for t in raw:
+        tid = str(t.get("tweet_id", "")).strip()
             if not tid:
                 continue
             ts = t.get("timestamp", "")

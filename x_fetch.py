@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""双 Cookie 抓 X 博主推文：两个小号各抓一半，避开单 Cookie 限流上限；合并去重、只留最近 N 天、按时间排序。"""
+"""双 Cookie 抓 X 博主推文：两个小号各抓一半；合并去重、只留最近 N 天、按时间排序。"""
 
+import os
+import sys
+import logging
 from datetime import datetime, timezone, timedelta
 
-from Scweet import Scweet
-import logging, sys
+from Scweet import Scweet, ScweetConfig
 
 logging.basicConfig(
     level=logging.INFO,
@@ -35,19 +37,16 @@ PER_USER_LIMIT = 10
 def _parse_ts(ts):
     if ts is None or ts == "":
         return None
-    # Unix 时间戳（秒或毫秒）
     if isinstance(ts, (int, float)) or (isinstance(ts, str) and ts.strip().isdigit()):
         val = float(ts)
-        if val > 1e12:            # 毫秒
+        if val > 1e12:
             val /= 1000.0
         return datetime.fromtimestamp(val, tz=timezone.utc)
     s = str(ts).strip()
-    # 老 Twitter created_at 格式（含 +0000 时区）
     try:
         return datetime.strptime(s, "%a %b %d %H:%M:%S %z %Y")
     except (ValueError, TypeError):
         pass
-    # ISO 8601，如 2026-09-08T06:15:00.000Z
     try:
         dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
         return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
@@ -57,10 +56,19 @@ def _parse_ts(ts):
 
 def _fetch_with_token(auth_token, accounts, cutoff, per_user_limit, proxy, tag):
     """用一个 Cookie 抓指定的一批博主。"""
-    kwargs = {"auth_token": auth_token, "manifest_scrape_on_init": True}
+    cookies = {"auth_token": auth_token}
+    # ct0 按分组从环境变量取：A 组用 X_CT0，B 组用 X_CT0_2
+    ct0 = os.environ.get("X_CT0" if tag == "A" else "X_CT0_2", "").strip()
+    if ct0:
+        cookies["ct0"] = ct0
+    conf_kwargs = dict(
+        manifest_scrape_on_init=False,   # 关掉：这一步在数据中心 IP 上会报 ManifestError
+        daily_requests_limit=100000,     # 默认才 30，抓几次就被判超额、当天作废；调高
+        daily_tweets_limit=1000000,
+    )
     if proxy:
-        kwargs["proxy"] = proxy
-    s = Scweet(**kwargs)
+        conf_kwargs["proxy"] = proxy
+    s = Scweet(cookies=cookies, config=ScweetConfig(**conf_kwargs))
 
     items = []
     for acct in accounts:
@@ -71,7 +79,7 @@ def _fetch_with_token(auth_token, accounts, cutoff, per_user_limit, proxy, tag):
             raw = []
         got = 0
         if raw:
-            print(f"[debug][{tag}] raw sample: {raw[0]}", flush=True)  # 临时：看清字段和时间格式
+            print(f"[debug][{tag}] raw sample: {raw[0]}", flush=True)  # 临时：确认字段
         for t in raw:
             tid = str(t.get("tweet_id", "")).strip()
             if not tid:

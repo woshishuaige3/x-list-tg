@@ -25,7 +25,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install -U Scweet
+        run: pip install "Scweet==5.4.0"
 
       - name: Run
         env:

@@ -24,7 +24,6 @@ ACCOUNTS = [
     "MacroMargin", "ShanghaoJin", "BigbirdflyChan", "mingchikuo",
     "trendforce", "labubu_trader",
     "au_xbt", "SemiAnalysis_",
-    "agudianjinshou",
     "PhyrexNi", "pequityresearch",
     "TJ_Research",
 ]
@@ -78,8 +77,6 @@ def _fetch_with_token(auth_token, accounts, cutoff, per_user_limit, proxy, tag):
             print(f"[warn][{tag}] 抓 {acct} 失败：{e}", flush=True)
             raw = []
         got = 0
-        if raw:
-            print(f"[debug][{tag}] raw sample: {raw[0]}", flush=True)  # 临时：确认字段
         for t in raw:
             tid = str(t.get("tweet_id", "")).strip()
             if not tid:

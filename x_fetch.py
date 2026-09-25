@@ -25,7 +25,7 @@ ACCOUNTS = [
     "trendforce", "labubu_trader",
     "au_xbt", "SemiAnalysis_",
     "PhyrexNi", "pequityresearch",
-    "TJ_Research", "fannaoxiaoyang",
+    "TJ_Research", "fannaoxiaoyang", "RYANHINGSHING",
 ]
 
 

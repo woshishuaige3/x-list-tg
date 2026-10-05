@@ -27,6 +27,7 @@ ACCOUNTS = [
     "PhyrexNi", "pequityresearch",
     "TJ_Research", "fannaoxiaoyang", "RYANHINGSHING",
     "LIWEI_TWCapital",
+    "GavinSBaker",
 ]
 
 

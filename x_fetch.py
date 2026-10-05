@@ -22,10 +22,11 @@ ACCOUNTS = [
     "ArtofSpecuycky", "qinbafrank", "iamai_omni", "Franktradinglog",
     "syhytu8i", "LinQingV", "fxtrader", "nft_hu",
     "MacroMargin", "ShanghaoJin", "BigbirdflyChan", "mingchikuo",
-    "trendforce", "labubu_trader",
-    "au_xbt", "SemiAnalysis_",
+    "labubu_trader",
+    "au_xbt",
     "PhyrexNi", "pequityresearch",
     "TJ_Research", "fannaoxiaoyang", "RYANHINGSHING",
+    "LIWEI_TWCapital",
 ]
 
 
